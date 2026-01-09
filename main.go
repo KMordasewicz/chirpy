@@ -1,20 +1,39 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/KMordasewicz/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	platform       string
+	dbQueires      *database.Queries
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Couldn't load ENV vars: %v", err)
+	}
 	const serverPort = "8080"
 	const rootDir = "."
-	cfg := apiConfig{}
+
+	platform := os.Getenv("PLATFORM")
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("Couldn't open database connetion: %v", err)
+	}
+	dbQueries := database.New(db)
+	cfg := apiConfig{dbQueires: dbQueries, platform: platform}
 
 	fileServerHandler := http.StripPrefix(
 		"/app",
@@ -22,10 +41,15 @@ func main() {
 	)
 
 	serverMutex := http.NewServeMux()
+
 	serverMutex.Handle("/app/", cfg.middlewareMetricsInc(fileServerHandler))
+
 	serverMutex.HandleFunc("GET /api/healthz", healthzHandler)
-	serverMutex.HandleFunc("GET /api/metrics", cfg.metricsHandler)
-	serverMutex.HandleFunc("POST /api/reset", cfg.resetHandler)
+	serverMutex.HandleFunc("POST /api/chirps", cfg.chirpsHandler)
+	serverMutex.HandleFunc("POST /api/users", cfg.usersHandler)
+
+	serverMutex.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
+	serverMutex.HandleFunc("POST /admin/reset", cfg.resetHandler)
 
 	server := &http.Server{
 		Addr:    ":" + serverPort,
