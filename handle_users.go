@@ -9,21 +9,13 @@ func (cfg *apiConfig) usersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "appliation/json")
 	msg, err := decodeMsg[msgUsers](r)
 	if err != nil {
-		resErr := responseError{Error: "Something went wrong."}
-		err := encodeMsg(resErr, 400, w)
-		if err != nil {
-			log.Printf("Couldn't dencode respone msg: %v\n", err)
-		}
+		sendError(w, 400, "")
 		return
 	}
 	users, err := cfg.dbQueires.CreateUser(r.Context(), msg.Email)
 	if err != nil {
-		resErr := responseError{Error: "Couldn't add user."}
 		log.Printf("Couldn't add user: %v\n", err)
-		err := encodeMsg(resErr, 500, w)
-		if err != nil {
-			log.Printf("Couldn't encode msg: %v\n", err)
-		}
+		sendError(w, 500, "Couldn't add user.")
 		return
 	}
 	taggedUsers := responseUsers{

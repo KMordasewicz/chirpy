@@ -45,7 +45,9 @@ func main() {
 	serverMutex.Handle("/app/", cfg.middlewareMetricsInc(fileServerHandler))
 
 	serverMutex.HandleFunc("GET /api/healthz", healthzHandler)
-	serverMutex.HandleFunc("POST /api/chirps", cfg.chirpsHandler)
+	serverMutex.HandleFunc("POST /api/chirps", cfg.chirpsPostHandler)
+	serverMutex.HandleFunc("GET /api/chirps", cfg.chirpsGetHandler)
+	serverMutex.HandleFunc("GET /api/chirps/{chirpID}", cfg.chirpGetHandler)
 	serverMutex.HandleFunc("POST /api/users", cfg.usersHandler)
 
 	serverMutex.HandleFunc("GET /admin/metrics", cfg.metricsHandler)

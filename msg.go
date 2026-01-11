@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -13,7 +14,7 @@ type msgRecive interface {
 }
 
 type responseSend interface {
-	responseError | responseChirps | responseUsers
+	responseError | responseChirps | responseUsers | []responseChirps
 }
 
 type msgChirps struct {
@@ -66,4 +67,15 @@ func decodeMsg[M msgRecive](r *http.Request) (M, error) {
 		return msg, err
 	}
 	return msg, nil
+}
+
+func sendError(w http.ResponseWriter, code int, msg string) {
+	if msg == "" {
+		msg = "Something went wrong"
+	}
+	resErr := responseError{Error: msg}
+	err := encodeMsg(resErr, code, w)
+	if err != nil {
+		log.Printf("Couldn't encode error respone msg: %v\n", err)
+	}
 }

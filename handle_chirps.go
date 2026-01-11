@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/KMordasewicz/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 var profaineWords = [...]string{
@@ -32,23 +34,16 @@ func cleanMsg(msg string) string {
 	return strings.Join(cleanMsg, " ")
 }
 
-func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) {
 	msg, err := decodeMsg[msgChirps](r)
 	if err != nil {
-		resErr := responseError{Error: "Something went wrong."}
-		err := encodeMsg(resErr, 400, w)
-		if err != nil {
-			log.Printf("Couldn't encode respone msg: %v\n", err)
-		}
+		log.Printf("Couldn't decode message: %v\n", err)
+		sendError(w, 400, "Incorrect message format")
 		return
 	}
 
 	if len(msg.Body) > 140 {
-		resErr := responseError{Error: "Chirp is too long"}
-		err := encodeMsg(resErr, 400, w)
-		if err != nil {
-			log.Printf("Couldn't encode Chirpy too long msg: %v\n", err)
-		}
+		sendError(w, 400, "Chirp is too long")
 		return
 	}
 
@@ -58,11 +53,7 @@ func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Printf("Couldn't add chrip: %v\n", err)
-		resErr := responseError{Error: "Something went wrong."}
-		err := encodeMsg(resErr, 400, w)
-		if err != nil {
-			log.Printf("Couldn't encode respone msg: %v\n", err)
-		}
+		sendError(w, 400, "")
 		return
 	}
 
@@ -75,6 +66,64 @@ func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = encodeMsg(res, 201, w)
 	if err != nil {
-		log.Printf("Couldn't encode OK msg: %v\n", err)
+		log.Printf("Couldn't encode response msg: %v\n", err)
+	}
+}
+
+func (cfg *apiConfig) chirpsGetHandler(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.dbQueires.GetChirps(r.Context())
+	if err != nil {
+		log.Printf("Couldn't get chirps from db: %v\n", err)
+		sendError(w, 500, "Unable to fetch chirps")
+		return
+	}
+	chirpsTagged := make([]responseChirps, len(chirps))
+	for i, chirp := range chirps {
+		chirpsTagged[i] = responseChirps{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		}
+	}
+	err = encodeMsg(chirpsTagged, 200, w)
+	if err != nil {
+		log.Printf("Couldn't encode response msg: %v\n", err)
+	}
+}
+
+func (cfg *apiConfig) chirpGetHandler(w http.ResponseWriter, r *http.Request) {
+	chirpIDSting := r.PathValue("chirpID")
+	if chirpIDSting == "" {
+		log.Print("Failed to get path value for chirp id.\n")
+		return
+	}
+	chirpID, err := uuid.Parse(chirpIDSting)
+	if err != nil {
+		log.Printf("Couldn't parse chirp id to uuid: %v\n", err)
+		return
+	}
+	chirp, err := cfg.dbQueires.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("No rows for id: %v", chirpID)
+			sendError(w, 404, "Chirp not found")
+		} else {
+			log.Printf("Couldn't get chirp for id: %v from db: %v\n", chirpID, err)
+			sendError(w, 500, "Unable to fetch chirp")
+		}
+		return
+	}
+	chirpTagged := responseChirps{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	}
+	err = encodeMsg(chirpTagged, 200, w)
+	if err != nil {
+		log.Printf("Couldn't encode response msg: %v\n", err)
 	}
 }
