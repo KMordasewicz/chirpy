@@ -23,7 +23,8 @@ type msgChirps struct {
 }
 
 type msgUsers struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type responseError struct {

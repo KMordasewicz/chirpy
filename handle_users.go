@@ -3,6 +3,9 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/KMordasewicz/chirpy/internal/auth"
+	"github.com/KMordasewicz/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) usersHandler(w http.ResponseWriter, r *http.Request) {
@@ -12,7 +15,16 @@ func (cfg *apiConfig) usersHandler(w http.ResponseWriter, r *http.Request) {
 		sendError(w, 400, "")
 		return
 	}
-	users, err := cfg.dbQueires.CreateUser(r.Context(), msg.Email)
+	hashed_password, err := auth.HashPassword(msg.Password)
+	if err != nil {
+		log.Printf("Couldn't hash password: %v", err)
+		sendError(w, 500, "Unable to process password")
+		return
+	}
+	users, err := cfg.dbQueires.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          msg.Email,
+		HashedPassword: hashed_password,
+	})
 	if err != nil {
 		log.Printf("Couldn't add user: %v\n", err)
 		sendError(w, 500, "Couldn't add user.")

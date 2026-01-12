@@ -49,6 +49,7 @@ func main() {
 	serverMutex.HandleFunc("GET /api/chirps", cfg.chirpsGetHandler)
 	serverMutex.HandleFunc("GET /api/chirps/{chirpID}", cfg.chirpGetHandler)
 	serverMutex.HandleFunc("POST /api/users", cfg.usersHandler)
+	serverMutex.HandleFunc("POST /api/login", cfg.loginHandler)
 
 	serverMutex.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	serverMutex.HandleFunc("POST /admin/reset", cfg.resetHandler)
