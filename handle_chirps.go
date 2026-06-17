@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/KMordasewicz/chirpy/internal/auth"
 	"github.com/KMordasewicz/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -35,12 +36,31 @@ func cleanMsg(msg string) string {
 }
 
 func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		log.Printf("Couldn't get auth token: %v\n", err)
+		sendError(w, 401, "Unauthorized")
+		return
+	}
+
 	msg, err := decodeMsg[msgChirps](r)
 	if err != nil {
 		log.Printf("Couldn't decode message: %v\n", err)
 		sendError(w, 400, "Incorrect message format")
 		return
 	}
+
+	userID, err := auth.ValidateJWT(token, cfg.jwtSignKey)
+	if err != nil {
+		log.Printf("Invalid token user token: %v\n", err)
+		sendError(w, 401, "Unauthorized")
+		return
+	}
+	// if user != msg.UserID {
+	// 	log.Printf("User missmatch msg user: %v, token: %v", msg.UserID, user)
+	// 	sendError(w, 401, "Incorrect user authorization")
+	// 	return
+	// }
 
 	if len(msg.Body) > 140 {
 		sendError(w, 400, "Chirp is too long")
@@ -49,7 +69,7 @@ func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) 
 
 	chirp, err := cfg.dbQueires.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   cleanMsg(msg.Body),
-		UserID: msg.UserID,
+		UserID: userID,
 	})
 	if err != nil {
 		log.Printf("Couldn't add chrip: %v\n", err)
@@ -62,7 +82,7 @@ func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) 
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
 		Body:      chirp.Body,
-		UserID:    chirp.UserID,
+		UserID:    chirp.ID,
 	}
 	err = encodeMsg(res, 201, w)
 	if err != nil {

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -154,6 +155,47 @@ func TestValidateJWT(t *testing.T) {
 					t.Errorf("uuid mismatch, got: %v instead: %v\n", uuid, c.userID)
 				}
 			})
+		})
+	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	testCases := []struct {
+		name         string
+		headers      http.Header
+		token        string
+		expectedFail bool
+	}{
+		{
+			name:         "Good path",
+			headers:      http.Header{"Authorization": []string{"Bearer 1234"}},
+			token:        "1234",
+			expectedFail: false,
+		},
+		{
+			name:         "No key in headers",
+			headers:      http.Header{},
+			token:        "",
+			expectedFail: true,
+		},
+		{
+			name:         "No bearer",
+			headers:      http.Header{"Authorization": []string{"Basic 1234"}},
+			token:        "",
+			expectedFail: true,
+		},
+	}
+	for _, c := range testCases {
+		t.Run(c.name, func(t *testing.T) {
+			token, err := GetBearerToken(c.headers)
+			if (err != nil) != c.expectedFail {
+				t.Errorf("GetBearerToken() error = %v, expectedFail = %v\n", err, c.expectedFail)
+				return
+			}
+			if token != c.token {
+				t.Errorf("token missmatch got: %v, expected: %v", token, c.token)
+				return
+			}
 		})
 	}
 }

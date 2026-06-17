@@ -17,6 +17,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	platform       string
 	dbQueires      *database.Queries
+	jwtSignKey     string
 }
 
 func main() {
@@ -27,13 +28,14 @@ func main() {
 	const rootDir = "."
 
 	platform := os.Getenv("PLATFORM")
+	jwtSignKey := os.Getenv("JWT_SIGN_KEY")
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Couldn't open database connetion: %v", err)
 	}
 	dbQueries := database.New(db)
-	cfg := apiConfig{dbQueires: dbQueries, platform: platform}
+	cfg := apiConfig{dbQueires: dbQueries, platform: platform, jwtSignKey: jwtSignKey}
 
 	fileServerHandler := http.StripPrefix(
 		"/app",

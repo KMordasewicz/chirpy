@@ -23,8 +23,9 @@ type msgChirps struct {
 }
 
 type msgUsers struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	ExpiresInSeconds int    `json:"expires_in_seconds"`
 }
 
 type responseError struct {
@@ -44,6 +45,7 @@ type responseUsers struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 func encodeMsg[R responseSend](m R, code int, w http.ResponseWriter) error {
