@@ -56,11 +56,6 @@ func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) 
 		sendError(w, 401, "Unauthorized")
 		return
 	}
-	// if user != msg.UserID {
-	// 	log.Printf("User missmatch msg user: %v, token: %v", msg.UserID, user)
-	// 	sendError(w, 401, "Incorrect user authorization")
-	// 	return
-	// }
 
 	if len(msg.Body) > 140 {
 		sendError(w, 400, "Chirp is too long")
@@ -81,8 +76,10 @@ func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) 
 		ID:        chirp.ID,
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
-		Body:      chirp.Body,
-		UserID:    chirp.ID,
+		msgChirps: msgChirps{
+			Body:   chirp.Body,
+			UserID: chirp.ID,
+		},
 	}
 	err = encodeMsg(res, 201, w)
 	if err != nil {
@@ -103,8 +100,10 @@ func (cfg *apiConfig) chirpsGetHandler(w http.ResponseWriter, r *http.Request) {
 			ID:        chirp.ID,
 			CreatedAt: chirp.CreatedAt,
 			UpdatedAt: chirp.UpdatedAt,
-			Body:      chirp.Body,
-			UserID:    chirp.UserID,
+			msgChirps: msgChirps{
+				Body:   chirp.Body,
+				UserID: chirp.UserID,
+			},
 		}
 	}
 	err = encodeMsg(chirpsTagged, 200, w)
@@ -139,8 +138,10 @@ func (cfg *apiConfig) chirpGetHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        chirp.ID,
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
-		Body:      chirp.Body,
-		UserID:    chirp.UserID,
+		msgChirps: msgChirps{
+			Body:   chirp.Body,
+			UserID: chirp.UserID,
+		},
 	}
 	err = encodeMsg(chirpTagged, 200, w)
 	if err != nil {

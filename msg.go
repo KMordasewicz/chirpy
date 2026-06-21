@@ -14,7 +14,7 @@ type msgRecive interface {
 }
 
 type responseSend interface {
-	responseError | responseChirps | responseUsers | []responseChirps
+	responseError | responseChirps | responseUsers | []responseChirps | responseRefresh
 }
 
 type msgChirps struct {
@@ -22,10 +22,13 @@ type msgChirps struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
+type User struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type msgUsers struct {
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"expires_in_seconds"`
+	User
 }
 
 type responseError struct {
@@ -33,19 +36,23 @@ type responseError struct {
 }
 
 type responseChirps struct {
+	msgChirps
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Body      string    `json:"body"`
-	UserID    uuid.UUID `json:"user_id"`
 }
 
 type responseUsers struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
+}
+
+type responseRefresh struct {
+	Token string `json:"token"`
 }
 
 func encodeMsg[R responseSend](m R, code int, w http.ResponseWriter) error {

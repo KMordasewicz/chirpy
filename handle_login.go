@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/KMordasewicz/chirpy/internal/auth"
+	"github.com/KMordasewicz/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -39,21 +39,30 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expireTime := 60 * time.Second
-	if msg.ExpiresInSeconds >= 0 && msg.ExpiresInSeconds <= 3600 {
-		expireTime = time.Duration(msg.ExpiresInSeconds) * time.Second
-	}
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSignKey, expireTime)
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSignKey)
 	if err != nil {
 		sendError(w, 500, "Couldn't generate auth token for the user")
 		return
 	}
+
+	refreshToken := auth.MakeRefreshToken()
+	_, err = cfg.dbQueires.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:  refreshToken,
+		UserID: user.ID,
+	})
+	if err != nil {
+		sendError(w, 500, "Couldn't generate refresh token for the user")
+		log.Printf("Error while saving refresh token: %v\n", err)
+		return
+	}
+
 	res := responseUsers{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        token,
+		RefreshToken: refreshToken,
 	}
 	if err = encodeMsg(res, 200, w); err != nil {
 		log.Printf("Couldn't encode response: %v\n", err)

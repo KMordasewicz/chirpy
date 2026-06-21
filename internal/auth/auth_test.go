@@ -43,35 +43,31 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestMakeJWT(t *testing.T) {
-	longDuration, _ := time.ParseDuration("30m")
 	uuid1, _ := uuid.Parse("402d8009-dec5-4e32-b585-6db9e77776c3")
 	uuid2, _ := uuid.Parse("8519a403-42fc-4923-8719-e8766e60c80c")
 	testCases := []struct {
 		name         string
 		userID       uuid.UUID
 		tokenSecret  string
-		exipiersIn   time.Duration
 		expectedFail bool
 	}{
 		{
 			name:         "Good path",
 			userID:       uuid1,
 			tokenSecret:  "pa$$word",
-			exipiersIn:   longDuration,
 			expectedFail: false,
 		},
 		{
 			name:         "Good path 2",
 			userID:       uuid2,
 			tokenSecret:  "😀", // Why does it work!?
-			exipiersIn:   longDuration,
 			expectedFail: false,
 		},
 	}
 
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := MakeJWT(c.userID, c.tokenSecret, c.exipiersIn)
+			_, err := MakeJWT(c.userID, c.tokenSecret)
 			if (err != nil) != c.expectedFail {
 				fmt.Printf("MakeJWT() error = %v, expectedFail = %v\n", err, c.expectedFail)
 				return
@@ -81,7 +77,7 @@ func TestMakeJWT(t *testing.T) {
 }
 
 func TestValidateJWT(t *testing.T) {
-	longDuration, _ := time.ParseDuration("30m")
+	longDuration, _ := time.ParseDuration("2h")
 	shortDuration, _ := time.ParseDuration("1s")
 	uuid1, _ := uuid.Parse("402d8009-dec5-4e32-b585-6db9e77776c3")
 	uuid2, _ := uuid.Parse("8519a403-42fc-4923-8719-e8766e60c80c")
@@ -89,7 +85,7 @@ func TestValidateJWT(t *testing.T) {
 		name              string
 		userID            uuid.UUID
 		tokenSecret       string
-		exipiersIn        time.Duration
+		waitFor           time.Duration
 		passCorrectSecret bool
 		expectedFail      bool
 	}{
@@ -97,7 +93,7 @@ func TestValidateJWT(t *testing.T) {
 			name:              "Good path",
 			userID:            uuid1,
 			tokenSecret:       "pa$$word",
-			exipiersIn:        longDuration,
+			waitFor:           shortDuration,
 			passCorrectSecret: true,
 			expectedFail:      false,
 		},
@@ -105,7 +101,7 @@ func TestValidateJWT(t *testing.T) {
 			name:              "Wrong password",
 			userID:            uuid2,
 			tokenSecret:       "test123",
-			exipiersIn:        longDuration,
+			waitFor:           shortDuration,
 			passCorrectSecret: false,
 			expectedFail:      true,
 		},
@@ -113,7 +109,7 @@ func TestValidateJWT(t *testing.T) {
 			name:              "Expired token",
 			userID:            uuid1,
 			tokenSecret:       "ha$hword",
-			exipiersIn:        shortDuration,
+			waitFor:           longDuration,
 			passCorrectSecret: true,
 			expectedFail:      true,
 		},
@@ -121,7 +117,7 @@ func TestValidateJWT(t *testing.T) {
 			name:              "Wrong password and expired token",
 			userID:            uuid2,
 			tokenSecret:       "321test",
-			exipiersIn:        shortDuration,
+			waitFor:           longDuration,
 			passCorrectSecret: false,
 			expectedFail:      true,
 		},
@@ -130,9 +126,9 @@ func TestValidateJWT(t *testing.T) {
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				token, err := MakeJWT(c.userID, c.tokenSecret, c.exipiersIn)
+				token, err := MakeJWT(c.userID, c.tokenSecret)
 				if err != nil {
-					t.Errorf("Token creation failed:\n\tuserID: %v\n\ttokenSecret: %v\n\texpiresIn: %v\nWith error:\n%v", c.userID, c.tokenSecret, c.exipiersIn, err)
+					t.Errorf("Token creation failed:\n\tuserID: %v\n\ttokenSecret: %v\nWith error:\n%v", c.userID, c.tokenSecret, err)
 					return
 				}
 
@@ -143,7 +139,7 @@ func TestValidateJWT(t *testing.T) {
 					secret = "incorrectSecret123$"
 				}
 
-				time.Sleep(3 * time.Second)
+				time.Sleep(c.waitFor)
 
 				uuid, err := ValidateJWT(token, secret)
 				if (err != nil) != c.expectedFail {
@@ -197,5 +193,13 @@ func TestGetBearerToken(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestMakeRefreshToken(t *testing.T) {
+	token_1 := MakeRefreshToken()
+	token_2 := MakeRefreshToken()
+	if token_1 == token_2 {
+		t.Error("MakeRefreshToken() same tokens were generated")
 	}
 }
