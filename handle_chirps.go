@@ -116,11 +116,13 @@ func (cfg *apiConfig) chirpGetHandler(w http.ResponseWriter, r *http.Request) {
 	chirpIDSting := r.PathValue("chirpID")
 	if chirpIDSting == "" {
 		log.Print("Failed to get path value for chirp id.\n")
+		sendError(w, http.StatusBadRequest, "Couldn't read chirp id")
 		return
 	}
 	chirpID, err := uuid.Parse(chirpIDSting)
 	if err != nil {
 		log.Printf("Couldn't parse chirp id to uuid: %v\n", err)
+		sendError(w, http.StatusBadRequest, "Couldn't parse chirp id")
 		return
 	}
 	chirp, err := cfg.dbQueires.GetChirpByID(r.Context(), chirpID)
@@ -147,4 +149,50 @@ func (cfg *apiConfig) chirpGetHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Couldn't encode response msg: %v\n", err)
 	}
+}
+
+func (cfg *apiConfig) chirpDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		sendError(w, http.StatusUnauthorized, "Malformed Authorization header")
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.jwtSignKey)
+	if err != nil {
+		sendError(w, http.StatusUnauthorized, "Invalid auth token")
+		return
+	}
+
+	chirpIDSting := r.PathValue("chirpID")
+	if chirpIDSting == "" {
+		log.Print("Failed to get path value for chirp id.\n")
+		sendError(w, http.StatusBadRequest, "Couldn't read chirp id")
+		return
+	}
+
+	chirpID, err := uuid.Parse(chirpIDSting)
+	if err != nil {
+		log.Printf("Couldn't parse chirp id to uuid: %v\n", err)
+		sendError(w, http.StatusBadRequest, "Couldn't parse chirp id")
+		return
+	}
+
+	chirpResult, err := cfg.dbQueires.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		sendError(w, http.StatusNotFound, "No chirp with such id")
+		return
+	}
+	if chirpResult.UserID != userID {
+		sendError(w, http.StatusForbidden, "Only authors can delete chirps")
+		return
+	}
+
+	_, err = cfg.dbQueires.DeleteChirpByID(r.Context(), chirpID)
+	if err != nil {
+		log.Printf("Couldn't delete a chirp: %v\n", err)
+		sendError(w, http.StatusInternalServerError, "Couldn't delete a chirp")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

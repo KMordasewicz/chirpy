@@ -18,6 +18,7 @@ type apiConfig struct {
 	platform       string
 	dbQueires      *database.Queries
 	jwtSignKey     string
+	polkaKey       string
 }
 
 func main() {
@@ -29,13 +30,19 @@ func main() {
 
 	platform := os.Getenv("PLATFORM")
 	jwtSignKey := os.Getenv("JWT_SIGN_KEY")
+	polkaKey := os.Getenv("POLKA_KEY")
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Couldn't open database connetion: %v", err)
 	}
 	dbQueries := database.New(db)
-	cfg := apiConfig{dbQueires: dbQueries, platform: platform, jwtSignKey: jwtSignKey}
+	cfg := apiConfig{
+		dbQueires:  dbQueries,
+		platform:   platform,
+		jwtSignKey: jwtSignKey,
+		polkaKey:   polkaKey,
+	}
 
 	fileServerHandler := http.StripPrefix(
 		"/app",
@@ -46,16 +53,22 @@ func main() {
 
 	serverMutex.Handle("/app/", cfg.middlewareMetricsInc(fileServerHandler))
 
+	// Internal endpoints
 	serverMutex.HandleFunc("GET /api/healthz", healthzHandler)
 	serverMutex.HandleFunc("POST /api/chirps", cfg.chirpsPostHandler)
 	serverMutex.HandleFunc("GET /api/chirps", cfg.chirpsGetHandler)
 	serverMutex.HandleFunc("GET /api/chirps/{chirpID}", cfg.chirpGetHandler)
+	serverMutex.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.chirpDeleteHandler)
 	serverMutex.HandleFunc("POST /api/users", cfg.usersHandler)
 	serverMutex.HandleFunc("PUT /api/users", cfg.updateUserHandler)
 	serverMutex.HandleFunc("POST /api/login", cfg.loginHandler)
 	serverMutex.HandleFunc("POST /api/refresh", cfg.refreshHandler)
 	serverMutex.HandleFunc("POST /api/revoke", cfg.revokeHandler)
 
+	// External webhooks
+	serverMutex.HandleFunc("POST /api/polka/webhooks", cfg.polkaWebhookHandler)
+
+	// Admin endpoints
 	serverMutex.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	serverMutex.HandleFunc("POST /admin/reset", cfg.resetHandler)
 

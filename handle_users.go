@@ -30,10 +30,11 @@ func (cfg *apiConfig) usersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	taggedUsers := responseUsers{
-		ID:        users.ID,
-		CreatedAt: users.CreatedAt,
-		UpdatedAt: users.UpdatedAt,
-		Email:     users.Email,
+		ID:          users.ID,
+		CreatedAt:   users.CreatedAt,
+		UpdatedAt:   users.UpdatedAt,
+		Email:       users.Email,
+		IsChirpyRed: users.IsChirpyRed,
 	}
 	err = encodeMsg(taggedUsers, 201, w)
 	if err != nil {
@@ -77,10 +78,11 @@ func (cfg *apiConfig) updateUserHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	err = encodeMsg(responseUsers{
-		ID:        userResult.ID,
-		CreatedAt: userResult.CreatedAt,
-		UpdatedAt: userResult.UpdatedAt,
-		Email:     userResult.Email,
+		ID:          userResult.ID,
+		CreatedAt:   userResult.CreatedAt,
+		UpdatedAt:   userResult.UpdatedAt,
+		Email:       userResult.Email,
+		IsChirpyRed: userResult.IsChirpyRed,
 	}, http.StatusOK, w)
 	if err != nil {
 		log.Printf("Couldn't respond to POST /api/users request: %v\n", err)

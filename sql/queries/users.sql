@@ -27,3 +27,11 @@ SET email = $2,
 WHERE id = $1
 RETURNING *
 ;
+
+-- name: UpgradeUserToRed :one
+UPDATE users
+SET is_chirpy_red = true
+WHERE id = $1
+RETURNING *
+;
+

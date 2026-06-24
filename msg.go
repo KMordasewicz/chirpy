@@ -10,7 +10,7 @@ import (
 )
 
 type msgRecive interface {
-	msgChirps | msgUsers
+	msgChirps | msgUsers | msgPolkaWebhook
 }
 
 type responseSend interface {
@@ -31,6 +31,13 @@ type msgUsers struct {
 	User
 }
 
+type msgPolkaWebhook struct {
+	Event string `json:"event"`
+	Data  struct {
+		UserID uuid.UUID `json:"user_id"`
+	} `json:"data"`
+}
+
 type responseError struct {
 	Error string `json:"error"`
 }
@@ -47,6 +54,7 @@ type responseUsers struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Email        string    `json:"email"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 	Token        string    `json:"token,omitempty"`
 	RefreshToken string    `json:"refresh_token,omitempty"`
 }
