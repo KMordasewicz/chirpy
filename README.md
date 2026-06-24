@@ -1,3 +1,3 @@
 # chirpy
 
-Simple server http server made as part of [https://www.boot.dev/](boot.dev) course.
+Simple server http server made as part of [boot.dev](https://www.boot.dev/) course.
