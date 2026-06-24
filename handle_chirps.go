@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/KMordasewicz/chirpy/internal/auth"
@@ -88,12 +89,38 @@ func (cfg *apiConfig) chirpsPostHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *apiConfig) chirpsGetHandler(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.dbQueires.GetChirps(r.Context())
-	if err != nil {
-		log.Printf("Couldn't get chirps from db: %v\n", err)
-		sendError(w, 500, "Unable to fetch chirps")
-		return
+	authorID := r.URL.Query().Get("author_id")
+	sortOrder := r.URL.Query().Get("sort")
+
+	var chirps []database.Chirp
+	if authorID == "" {
+		chirpsAll, err := cfg.dbQueires.GetChirps(r.Context())
+		if err != nil {
+			log.Printf("Couldn't get chirps from db: %v\n", err)
+			sendError(w, 500, "Unable to fetch chirps")
+			return
+		}
+		chirps = chirpsAll
+	} else {
+		authorUUID, err := uuid.Parse(authorID)
+		if err != nil {
+			log.Printf("Couldn't parse author id: %v\n", err)
+			sendError(w, 500, "Unable to parse author id")
+			return
+		}
+		chirpsByAuthor, err := cfg.dbQueires.GetChirpsByAuthor(r.Context(), authorUUID)
+		if err != nil {
+			log.Printf("Couldn't get chirps from db: %v\n", err)
+			sendError(w, 500, "Unable to fetch chirps")
+			return
+		}
+		chirps = chirpsByAuthor
 	}
+
+	if sortOrder == "desc" {
+		slices.Reverse(chirps)
+	}
+
 	chirpsTagged := make([]responseChirps, len(chirps))
 	for i, chirp := range chirps {
 		chirpsTagged[i] = responseChirps{
@@ -106,7 +133,7 @@ func (cfg *apiConfig) chirpsGetHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 	}
-	err = encodeMsg(chirpsTagged, 200, w)
+	err := encodeMsg(chirpsTagged, 200, w)
 	if err != nil {
 		log.Printf("Couldn't encode response msg: %v\n", err)
 	}
